@@ -9,20 +9,8 @@ dotenv.config()
 
 const bot = new Bot(process.env.BOT_TOKEN || "");
 
-bot.command('start', async (ctx: Context) => {
-  const completion = await openai.createChatCompletion({
-    model: "gpt-3.5-turbo",
-    max_tokens: getRandomTokens(),
-    messages: [{ role: "system", content: initPrompt }],
-  });
-  const response = completion.data.choices.at(0)?.message;
-  if (response) {
-    ctx.reply(response.content);
-  }
-});
-
 bot.on('message:text', async (ctx: Context) => {
-  console.log('message');
+  console.log('message', ctx.msg);
   
   const text: string = ctx.msg.text;
   if (text) {
