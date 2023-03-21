@@ -1,5 +1,5 @@
-import { Context, deunionize, Telegraf } from "telegraf";
-import { message } from "telegraf/filters";
+import { Bot, Context, webhookCallback } from "grammy";
+import express from "express";
 import { openai } from './ai-api';
 import { initPrompt } from './constants';
 import { getRandomTokens } from './utils';
@@ -7,9 +7,9 @@ import dotenv from "dotenv";
 
 dotenv.config()
 
-const bot = new Telegraf(process.env?.BOT_TOKEN ?? '');
+const bot = new Bot(process.env.BOT_TOKEN || "");
 
-bot.start(async (ctx: Context) => {
+bot.command('start', async (ctx: Context) => {
   const completion = await openai.createChatCompletion({
     model: "gpt-3.5-turbo",
     max_tokens: getRandomTokens(),
@@ -20,13 +20,14 @@ bot.start(async (ctx: Context) => {
     ctx.reply(response.content);
   }
 });
-bot.on('text', async (ctx: Context) => {
-  const message = deunionize(ctx.message)?.text;
-  if (message) {
+
+bot.on('message:text', async (ctx: Context) => {
+  const text: string = ctx.msg.text;
+  if (text) {
     const completion = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       max_tokens: getRandomTokens(),
-      messages: [{ role: "user", content: message }],
+      messages: [{ role: "user", content: text }],
     });
     const response = completion.data.choices.at(0)?.message;
     if(response) {
@@ -34,8 +35,19 @@ bot.on('text', async (ctx: Context) => {
     }
   }
 })
-bot.launch();
 
-// Enable graceful stop
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+// Start the server
+if (process.env.NODE_ENV === "production") {
+  // Use Webhooks for the production server
+  const app = express();
+  app.use(express.json());
+  app.use(webhookCallback(bot, "express"));
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Bot listening on port ${PORT}`);
+  });
+} else {
+  // Use Long Polling for development
+  bot.start();
+}
