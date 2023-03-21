@@ -22,6 +22,8 @@ bot.command('start', async (ctx: Context) => {
 });
 
 bot.on('message:text', async (ctx: Context) => {
+  console.log('message');
+  
   const text: string = ctx.msg.text;
   if (text) {
     const completion = await openai.createChatCompletion({
@@ -44,7 +46,12 @@ if (process.env.NODE_ENV === "production") {
   app.use(webhookCallback(bot, "express"));
 
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
+    await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      max_tokens: getRandomTokens(),
+      messages: [{ role: "system", content: initPrompt }],
+    });
     console.log(`Bot listening on port ${PORT}`);
   });
 } else {
